@@ -8,20 +8,34 @@
 #include <unistd.h>
 #include <asm-generic/socket.h>
 #include <pthread.h> 
+#include <arpa/inet.h>
+#include <stdbool.h>
+#include "chat.pb-c.h"
+#include "server_functions.h"
 #define PORT 8080
 #define BUFFER_SIZE 1
 
+struct Connection {
+	int fd;
+	char *ip;
+};
+
 void *thread_listening_client(void *param) {
-    int socket_id = *((int *)param);
-    printf("Id del socket del cliente: %d\n", socket_id);
+	struct Connection cn = *((struct Connection *)param);
+    int socket_id = cn.fd;
+	char *ip = cn.ip;
+    printf("Id del socket del cliente: %d, ip: %s\n", socket_id, ip);
 
 
     char buffer[BUFFER_SIZE];
-	char *message_received = NULL;
+	uint8_t *message_received = NULL;
     ssize_t bytes_read;
 	size_t total_bytes_received = 0;
 
     while (1) {
+
+		bool message_end = false;
+
         // Leer x bytes del socket
         bytes_read = recv(socket_id, &buffer, BUFFER_SIZE, 0);
 
@@ -30,12 +44,51 @@ void *thread_listening_client(void *param) {
             break;
         }
 
+		message_end = buffer[bytes_read - 1] == '\0';
+
+		if(message_end){
+			bytes_read -= 1; // Excluir byte de terminación
+		}
+
 		// Realizar 'append' de bytes leidos
 		message_received = (char *)realloc(message_received, total_bytes_received + bytes_read);
 		memcpy(message_received + total_bytes_received, buffer, bytes_read);
         total_bytes_received += bytes_read;
 
-		printf("El mensaje recibido es: %s\n", message_received);
+		if(message_end){
+
+			printf("El mensaje recibido es: %s\n", (char*) message_received);
+
+			// Convertir a objeto request
+			Chat__Request *request = chat__request__unpack(NULL, total_bytes_received, message_received);
+
+			if(request != NULL){
+
+				printf("Request type: %d\n", request->operation);
+
+				if(request->operation == CHAT__OPERATION__REGISTER_USER){
+					char* result = register_user(socket_id, request->register_user->username, ip);
+					char* message = "Usuario registrado exitosamente!";
+					int status = 200;
+					if(result != NULL){
+						// Hay error, enviar mensaje y status de error
+						message = result;
+						status = 400;
+					}
+
+					// Enviar respuesta
+					Chat__Response res = get_response_object(CHAT__OPERATION__REGISTER_USER, status, message);
+					size_t size = chat__response__get_packed_size(&res);
+    				uint8_t *buffer = (uint8_t *)malloc(size);
+			
+					chat__response__pack(&res, buffer);
+					send(socket_id, buffer, size, 0);
+					free(buffer);
+				}
+			}
+		}
+		
+
     }
 
 	printf("Conexión %d ha sido cerrada.\n", socket_id);
@@ -95,8 +148,15 @@ int main(int argc, char const* argv[])
             exit(EXIT_FAILURE);
         }
 
+		char *client_ip = inet_ntoa(address.sin_addr);
+
+		struct Connection cn = {
+			new_socket,
+			client_ip
+		};
+
         // Crear thread para conexión aceptada
-        pthread_create(&thread_id, NULL, thread_listening_client, (void *)&new_socket);
+        pthread_create(&thread_id, NULL, thread_listening_client, (void *)&cn);
 
         
     }

@@ -11,7 +11,7 @@ int main(int argc, char const* argv[])
 {
 	int status, valread, client_fd;
 	struct sockaddr_in serv_addr;
-	char* hello = "Hello from client";
+	char* hello = "Hello from client d\0";
 	char buffer[1024] = { 0 };
 	if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		printf("\n Socket creation error \n");
@@ -37,7 +37,7 @@ int main(int argc, char const* argv[])
 		printf("\nConnection Failed \n");
 		return -1;
 	}
-	send(client_fd, hello, strlen(hello), 0);
+	send(client_fd, hello, strlen(hello)+1, 0);
 	printf("Hello message sent\n");
 	valread = read(client_fd, buffer,
 				1024 - 1); // subtract 1 for the null

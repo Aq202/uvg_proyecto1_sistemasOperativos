@@ -39,22 +39,25 @@ int main(int argc, char const* argv[])
 		return -1;
 	}
 
+	Chat__Request request = CHAT__REQUEST__INIT;
+	request.operation = CHAT__OPERATION__REGISTER_USER;
 
-    Chat__User user = CHAT__USER__INIT;
-    user.username = "Diego";
-    user.ip_address = "192.165.254.25";
-    user.status = CHAT__USER_STATUS__ONLINE;
+	Chat__NewUserRequest new_user_req = CHAT__NEW_USER_REQUEST__INIT;
+	new_user_req.username = "Maria";
+
+	request.register_user = &new_user_req;
+	request.payload_case = CHAT__REQUEST__PAYLOAD_REGISTER_USER;
     
-    size_t buffer_size = chat__user__get_packed_size(&user);
+    size_t buffer_size = chat__request__get_packed_size(&request);
 
     // Asignar memoria para el buffer
     uint8_t *buffer = (uint8_t *)malloc(buffer_size);
 
     // Serializar la estructura de mensaje en el buffer
-    chat__user__pack(&user, buffer);
+    chat__request__pack(&request, buffer);
 	printf("Buffer: %s\n", (char *)buffer);
 
-	send(client_fd, buffer, buffer_size, 0);
+	send(client_fd, buffer + '\0', buffer_size + 1, 0);
 	printf("User message sent\n");
 	/*
     valread = read(client_fd, buffer,

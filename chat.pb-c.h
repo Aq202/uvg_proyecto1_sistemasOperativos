@@ -95,25 +95,9 @@ typedef enum _Chat__StatusCode {
    */
   CHAT__STATUS_CODE__BAD_REQUEST = 400,
   /*
-   * Authentication is required and has failed or has not been provided
-   */
-  CHAT__STATUS_CODE__UNAUTHORIZED = 401,
-  /*
-   * The request was a valid request, but the server is refusing to respond to it
-   */
-  CHAT__STATUS_CODE__FORBIDDEN = 403,
-  /*
-   * The requested resource could not be found
-   */
-  CHAT__STATUS_CODE__NOT_FOUND = 404,
-  /*
    * A generic error message, given when no more specific message is suitable
    */
-  CHAT__STATUS_CODE__INTERNAL_SERVER_ERROR = 500,
-  /*
-   * The server either does not recognize the request method, or it lacks the ability to fulfill the request
-   */
-  CHAT__STATUS_CODE__NOT_IMPLEMENTED = 501
+  CHAT__STATUS_CODE__INTERNAL_SERVER_ERROR = 500
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CHAT__STATUS_CODE)
 } Chat__StatusCode;
 

@@ -1084,29 +1084,21 @@ const ProtobufCEnumDescriptor chat__operation__descriptor =
   chat__operation__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue chat__status_code__enum_values_by_number[8] =
+static const ProtobufCEnumValue chat__status_code__enum_values_by_number[4] =
 {
   { "UNKNOWN_STATUS", "CHAT__STATUS_CODE__UNKNOWN_STATUS", 0 },
   { "OK", "CHAT__STATUS_CODE__OK", 200 },
   { "BAD_REQUEST", "CHAT__STATUS_CODE__BAD_REQUEST", 400 },
-  { "UNAUTHORIZED", "CHAT__STATUS_CODE__UNAUTHORIZED", 401 },
-  { "FORBIDDEN", "CHAT__STATUS_CODE__FORBIDDEN", 403 },
-  { "NOT_FOUND", "CHAT__STATUS_CODE__NOT_FOUND", 404 },
   { "INTERNAL_SERVER_ERROR", "CHAT__STATUS_CODE__INTERNAL_SERVER_ERROR", 500 },
-  { "NOT_IMPLEMENTED", "CHAT__STATUS_CODE__NOT_IMPLEMENTED", 501 },
 };
 static const ProtobufCIntRange chat__status_code__value_ranges[] = {
-{0, 0},{200, 1},{400, 2},{403, 4},{500, 6},{0, 8}
+{0, 0},{200, 1},{400, 2},{500, 3},{0, 4}
 };
-static const ProtobufCEnumValueIndex chat__status_code__enum_values_by_name[8] =
+static const ProtobufCEnumValueIndex chat__status_code__enum_values_by_name[4] =
 {
   { "BAD_REQUEST", 2 },
-  { "FORBIDDEN", 4 },
-  { "INTERNAL_SERVER_ERROR", 6 },
-  { "NOT_FOUND", 5 },
-  { "NOT_IMPLEMENTED", 7 },
+  { "INTERNAL_SERVER_ERROR", 3 },
   { "OK", 1 },
-  { "UNAUTHORIZED", 3 },
   { "UNKNOWN_STATUS", 0 },
 };
 const ProtobufCEnumDescriptor chat__status_code__descriptor =
@@ -1116,11 +1108,11 @@ const ProtobufCEnumDescriptor chat__status_code__descriptor =
   "StatusCode",
   "Chat__StatusCode",
   "chat",
-  8,
+  4,
   chat__status_code__enum_values_by_number,
-  8,
+  4,
   chat__status_code__enum_values_by_name,
-  5,
+  4,
   chat__status_code__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
