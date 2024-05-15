@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "socket.h": "c",
-        "protobuf-c.h": "c",
-        "chat.pb-c.h": "c"
-    }
-}

@@ -82,10 +82,14 @@ void *thread_listening_client(void *param) {
     				uint8_t *buffer = (uint8_t *)malloc(size);
 			
 					chat__response__pack(&res, buffer);
-					send(socket_id, buffer, size, 0);
+					send(socket_id, buffer + '\0', size + 1, 0);
 					free(buffer);
+					printf("Respuesta '%s' enviada.\n", message);
 				}
 			}
+
+
+			total_bytes_received = 0; // Reiniciar cuenta de tamaño de mensaje
 		}
 		
 

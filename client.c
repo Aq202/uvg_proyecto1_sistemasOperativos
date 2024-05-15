@@ -7,7 +7,67 @@
 #include <unistd.h>
 #include "chat.pb-c.h"
 #include <stdlib.h>
+#include <stdbool.h>
+#include <pthread.h> 
 #define PORT 8080
+#define BUFFER_SIZE 1
+
+void *thread_listening_server(void *param) {
+
+	int socket_id = *((int *)param);
+    char buffer[BUFFER_SIZE];
+	uint8_t *message_received = NULL;
+    ssize_t bytes_read;
+	size_t total_bytes_received = 0;
+
+    while (1) {
+
+		bool message_end = false;
+
+        // Leer x bytes del socket
+        bytes_read = recv(socket_id, &buffer, BUFFER_SIZE, 0);
+
+		// Si se cierra la conexión o hay error, dejar de esperar
+        if (bytes_read <= 0) {
+            break;
+        }
+
+		message_end = buffer[bytes_read - 1] == '\0';
+
+		if(message_end){
+			bytes_read -= 1; // Excluir byte de terminación
+		}
+
+		// Realizar 'append' de bytes leidos
+		message_received = (char *)realloc(message_received, total_bytes_received + bytes_read);
+		memcpy(message_received + total_bytes_received, buffer, bytes_read);
+        total_bytes_received += bytes_read;
+
+		if(message_end){
+
+			printf("El mensaje recibido es: %s\n", (char*) message_received);
+
+			// Convertir a objeto request
+			Chat__Response *request = chat__response__unpack(NULL, total_bytes_received, message_received);
+
+			if(request != NULL){
+
+				
+			}
+
+			total_bytes_received = 0; // Reiniciar cuenta de tamaño de mensaje
+		}
+		
+
+    }
+
+	printf("Conexión %d ha sido cerrada.\n", socket_id);
+
+    // liberar memoria, Cerrar el socket y salir del hilo
+	free(message_received);
+    close(socket_id);
+    pthread_exit(NULL);
+}
 
 int main(int argc, char const* argv[])
 {
@@ -65,6 +125,16 @@ int main(int argc, char const* argv[])
 							// terminator at the end
 	printf("%s\n", buffer);
     */
+
+
+   	// Crear hilo para espera de mensajes continua
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, thread_listening_server, (void *)&client_fd);
+
+
+
+    pthread_join(thread_id, NULL);
+
 	// closing the connected socket
 	close(client_fd);
 	return 0;
