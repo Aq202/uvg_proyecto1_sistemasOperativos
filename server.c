@@ -12,8 +12,9 @@
 #include <stdbool.h>
 #include "chat.pb-c.h"
 #include "server_functions.h"
+#include "consts.h"
 #define PORT 8080
-#define BUFFER_SIZE 1
+
 
 struct Connection {
 	int fd;
@@ -26,79 +27,67 @@ void *thread_listening_client(void *param) {
 	char *ip = cn.ip;
     printf("Id del socket del cliente: %d, ip: %s\n", socket_id, ip);
 
-
-    char buffer[BUFFER_SIZE];
-	uint8_t *message_received = NULL;
-    ssize_t bytes_read;
-	size_t total_bytes_received = 0;
+	uint8_t *buffer;
 
     while (1) {
 
-		bool message_end = false;
+		buffer = malloc(SOCKET_BUFFER_SIZE);
+    	ssize_t bytes_read;
 
         // Leer x bytes del socket
-        bytes_read = recv(socket_id, &buffer, BUFFER_SIZE, 0);
+        bytes_read = read(socket_id, buffer, SOCKET_BUFFER_SIZE);
 
 		// Si se cierra la conexión o hay error, dejar de esperar
         if (bytes_read <= 0) {
+			free(buffer);
             break;
         }
+		// Redimensionar buffer a tamaño de mensaje leído
+		buffer = (uint8_t *)realloc(buffer, bytes_read);
 
-		message_end = buffer[bytes_read - 1] == '\0';
 
-		if(message_end){
-			bytes_read -= 1; // Excluir byte de terminación
-		}
+		printf("El mensaje recibido es: %s\n", (char*) buffer);
 
-		// Realizar 'append' de bytes leidos
-		message_received = (char *)realloc(message_received, total_bytes_received + bytes_read);
-		memcpy(message_received + total_bytes_received, buffer, bytes_read);
-        total_bytes_received += bytes_read;
+		// Convertir a objeto request
+		Chat__Request *request = chat__request__unpack(NULL, bytes_read, buffer);
 
-		if(message_end){
+		// Liberar memoria de buffer
+		free(buffer);
 
-			printf("El mensaje recibido es: %s\n", (char*) message_received);
+		if(request != NULL){
 
-			// Convertir a objeto request
-			Chat__Request *request = chat__request__unpack(NULL, total_bytes_received, message_received);
+			printf("Request type: %d\n", request->operation);
 
-			if(request != NULL){
-
-				printf("Request type: %d\n", request->operation);
-
-				if(request->operation == CHAT__OPERATION__REGISTER_USER){
-					char* result = register_user(socket_id, request->register_user->username, ip);
-					char* message = "Usuario registrado exitosamente!";
-					int status = 200;
-					if(result != NULL){
-						// Hay error, enviar mensaje y status de error
-						message = result;
-						status = 400;
-					}
-
-					// Enviar respuesta
-					Chat__Response res = get_response_object(CHAT__OPERATION__REGISTER_USER, status, message);
-					size_t size = chat__response__get_packed_size(&res);
-    				uint8_t *buffer = (uint8_t *)malloc(size);
-			
-					chat__response__pack(&res, buffer);
-					send(socket_id, buffer + '\0', size + 1, 0);
-					free(buffer);
-					printf("Respuesta '%s' enviada.\n", message);
+			if(request->operation == CHAT__OPERATION__REGISTER_USER){
+				char* result = register_user(socket_id, request->register_user->username, ip);
+				char* message = "Usuario registrado exitosamente!";
+				int status = 200;
+				if(result != NULL){
+					// Hay error, enviar mensaje y status de error
+					message = result;
+					status = 400;
 				}
-			}
 
-
-			total_bytes_received = 0; // Reiniciar cuenta de tamaño de mensaje
-		}
+				// Enviar respuesta
+				Chat__Response res = get_response_object(CHAT__OPERATION__REGISTER_USER, status, message);
+				size_t size = chat__response__get_packed_size(&res);
+				uint8_t *buffer = (uint8_t *)malloc(size);
 		
+				chat__response__pack(&res, buffer);
+				send(socket_id, buffer + '\0', size + 1, 0);
+				free(buffer);
+				printf("Respuesta '%s' enviada.\n", message);
+			}
+		}
+
+
+	
 
     }
 
 	printf("Conexión %d ha sido cerrada.\n", socket_id);
 
-    // liberar memoria, Cerrar el socket y salir del hilo
-	free(message_received);
+    // Cerrar el socket y salir del hilo
     close(socket_id);
     pthread_exit(NULL);
 }

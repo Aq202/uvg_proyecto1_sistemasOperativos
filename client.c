@@ -9,64 +9,68 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <pthread.h> 
+#include "consts.h"
 #define PORT 8080
-#define BUFFER_SIZE 1
+
 
 void *thread_listening_server(void *param) {
 
 	int socket_id = *((int *)param);
-    char buffer[BUFFER_SIZE];
-	uint8_t *message_received = NULL;
-    ssize_t bytes_read;
-	size_t total_bytes_received = 0;
+    uint8_t *buffer;
 
     while (1) {
 
-		bool message_end = false;
+		buffer = malloc(SOCKET_BUFFER_SIZE);
+    	ssize_t bytes_read;
 
         // Leer x bytes del socket
-        bytes_read = recv(socket_id, &buffer, BUFFER_SIZE, 0);
+        bytes_read = read(socket_id, buffer, SOCKET_BUFFER_SIZE);
 
 		// Si se cierra la conexión o hay error, dejar de esperar
         if (bytes_read <= 0) {
+			free(buffer);
             break;
         }
+		// Redimensionar buffer a tamaño de mensaje leído
+		buffer = (uint8_t *)realloc(buffer, bytes_read);
 
-		message_end = buffer[bytes_read - 1] == '\0';
+		printf("El mensaje recibido es: %s\n", (char*) buffer);
 
-		if(message_end){
-			bytes_read -= 1; // Excluir byte de terminación
-		}
+		// Convertir a objeto request
+		Chat__Response *request = chat__response__unpack(NULL, bytes_read, buffer);
 
-		// Realizar 'append' de bytes leidos
-		message_received = (char *)realloc(message_received, total_bytes_received + bytes_read);
-		memcpy(message_received + total_bytes_received, buffer, bytes_read);
-        total_bytes_received += bytes_read;
+		// Liberar memoria de buffer
+		free(buffer);
 
-		if(message_end){
+		if(request != NULL){
 
-			printf("El mensaje recibido es: %s\n", (char*) message_received);
-
-			// Convertir a objeto request
-			Chat__Response *request = chat__response__unpack(NULL, total_bytes_received, message_received);
-
-			if(request != NULL){
-
-				
-			}
-
-			total_bytes_received = 0; // Reiniciar cuenta de tamaño de mensaje
-		}
-		
+			
+		}		
 
     }
 
-	printf("Conexión %d ha sido cerrada.\n", socket_id);
+	printf("Conexión con el servidor ha sido cerrada.\n");
 
-    // liberar memoria, Cerrar el socket y salir del hilo
-	free(message_received);
+    // Cerrar el socket y salir del hilo
+	
     close(socket_id);
     pthread_exit(NULL);
+}
+
+int read_number(char *message){
+	int num;
+    
+    // Solicitar al usuario que ingrese un número entero
+    printf("%s\n", message);
+    
+    // Intenta leer un número entero
+    if (scanf("%d", &num) == 1) {
+        return num;
+    } else {
+        printf("Entrada inválida. Por favor, intentar de nuevo.\n");
+        // Limpia el búfer de entrada
+        while (getchar() != '\n'); // Leer y descartar caracteres hasta encontrar un salto de línea
+    }
 }
 
 int main(int argc, char const* argv[])
@@ -117,7 +121,7 @@ int main(int argc, char const* argv[])
     chat__request__pack(&request, buffer);
 	printf("Buffer: %s\n", (char *)buffer);
 
-	send(client_fd, buffer + '\0', buffer_size + 1, 0);
+	send(client_fd, buffer, buffer_size, 0);
 	printf("User message sent\n");
 	/*
     valread = read(client_fd, buffer,
@@ -132,7 +136,7 @@ int main(int argc, char const* argv[])
     pthread_create(&thread_id, NULL, thread_listening_server, (void *)&client_fd);
 
 
-
+	// Esperar la finalización de hilo de espera
     pthread_join(thread_id, NULL);
 
 	// closing the connected socket
