@@ -1,5 +1,3 @@
-// Client side C program to demonstrate Socket
-// programming
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,7 +8,13 @@
 #include <stdbool.h>
 #include <pthread.h> 
 #include "consts.h"
+#include "client_functions.h"
 #define PORT 8080
+
+char *username = NULL;
+bool provitional_username = true;
+bool lock_menu = false;
+bool connection_open = true;
 
 
 void *thread_listening_server(void *param) {
@@ -18,7 +22,7 @@ void *thread_listening_server(void *param) {
 	int socket_id = *((int *)param);
     uint8_t *buffer;
 
-    while (1) {
+    while (connection_open) {
 
 		buffer = malloc(SOCKET_BUFFER_SIZE);
     	ssize_t bytes_read;
@@ -34,17 +38,33 @@ void *thread_listening_server(void *param) {
 		// Redimensionar buffer a tamaño de mensaje leído
 		buffer = (uint8_t *)realloc(buffer, bytes_read);
 
-		printf("El mensaje recibido es: %s\n", (char*) buffer);
-
 		// Convertir a objeto request
-		Chat__Response *request = chat__response__unpack(NULL, bytes_read, buffer);
+		Chat__Response *response = chat__response__unpack(NULL, bytes_read, buffer);
 
 		// Liberar memoria de buffer
 		free(buffer);
 
-		if(request != NULL){
+		if(response != NULL){
 
+			if(response->operation == CHAT__OPERATION__REGISTER_USER){
+
+				
+				if(response->status_code != CHAT__STATUS_CODE__OK){
+					// No se registró el nombre de usuario, resetear
+					username = NULL;
+					provitional_username = true;
+					printf("Respuesta del servidor: (error) %s\n", response->message);
+				} else {
+					provitional_username = false; // username aceptado
+					printf("Respuesta del servidor: (ok) %s\n", response->message);
+
+				}
+
+				lock_menu = false; // Liberar bloqueo de menu
+			}
 			
+		}else{
+			printf("Mensaje recibido del servidor no válido.\n");
 		}		
 
     }
@@ -53,6 +73,7 @@ void *thread_listening_server(void *param) {
 
     // Cerrar el socket y salir del hilo
 	
+	connection_open = false;
     close(socket_id);
     pthread_exit(NULL);
 }
@@ -60,17 +81,38 @@ void *thread_listening_server(void *param) {
 int read_number(char *message){
 	int num;
     
-    // Solicitar al usuario que ingrese un número entero
+	while(1){
+		// Solicitar al usuario que ingrese un número entero
+		printf("%s\n", message);
+		
+		// Intenta leer un número entero
+		if (scanf("%d", &num) == 1) {
+			while (getchar() != '\n'); // Limpiar input
+			return num;
+		} else {
+			printf("Entrada inválida. Por favor, intentar de nuevo.\n");
+			// Limpia el búfer de entrada
+			while (getchar() != '\n'); // Limpiar input
+		}
+	}
+}
+
+char* read_string(char *message, size_t max_size) {
+    char *string = (char*)malloc(max_size * sizeof(char)); 
+
+    // Solicitar al usuario que ingrese una cadena de caracteres
     printf("%s\n", message);
-    
-    // Intenta leer un número entero
-    if (scanf("%d", &num) == 1) {
-        return num;
-    } else {
-        printf("Entrada inválida. Por favor, intentar de nuevo.\n");
-        // Limpia el búfer de entrada
-        while (getchar() != '\n'); // Leer y descartar caracteres hasta encontrar un salto de línea
+
+    // Obtener input
+    fgets(string, max_size, stdin);
+
+    // Eliminar el carácter de nueva línea al final de la cadena
+    size_t len = strlen(string);
+    if (len > 0 && string[len - 1] == '\n') {
+        string[len - 1] = '\0';
     }
+
+    return string;
 }
 
 int main(int argc, char const* argv[])
@@ -103,43 +145,47 @@ int main(int argc, char const* argv[])
 		return -1;
 	}
 
-	Chat__Request request = CHAT__REQUEST__INIT;
-	request.operation = CHAT__OPERATION__REGISTER_USER;
-
-	Chat__NewUserRequest new_user_req = CHAT__NEW_USER_REQUEST__INIT;
-	new_user_req.username = "Maria";
-
-	request.register_user = &new_user_req;
-	request.payload_case = CHAT__REQUEST__PAYLOAD_REGISTER_USER;
-    
-    size_t buffer_size = chat__request__get_packed_size(&request);
-
-    // Asignar memoria para el buffer
-    uint8_t *buffer = (uint8_t *)malloc(buffer_size);
-
-    // Serializar la estructura de mensaje en el buffer
-    chat__request__pack(&request, buffer);
-	printf("Buffer: %s\n", (char *)buffer);
-
-	send(client_fd, buffer, buffer_size, 0);
-	printf("User message sent\n");
-	/*
-    valread = read(client_fd, buffer,
-				1024 - 1); // subtract 1 for the null
-							// terminator at the end
-	printf("%s\n", buffer);
-    */
-
-
+	
    	// Crear hilo para espera de mensajes continua
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, thread_listening_server, (void *)&client_fd);
 
+	connection_open = true;
+	while(connection_open){
 
-	// Esperar la finalización de hilo de espera
-    pthread_join(thread_id, NULL);
+		if(lock_menu) continue;
 
-	// closing the connected socket
+		// Mostrar menú de opciones
+		if(username == NULL || provitional_username){
+
+			int option = read_number("##### Menú de opciones #####\n1. Registrar nombre de usuario\n2. Salir\nElegir una opción: ");
+			
+			if(option == 1){
+
+				username = read_string("Ingresar username: ", 100);
+
+				struct Buffer request = get_register_user_request(username);
+				send(client_fd, request.buffer, request.buffer_size, 0);
+				free(request.buffer);
+				printf("Solicitud de registro de username enviada!\n");
+				lock_menu = true;
+			} else if (option == 2){
+				connection_open = false;
+			}
+			
+		}else{
+			int option = read_number("##### Menú de opciones #####\n1. Salir\nElegir una opción: ");
+			
+			if(option == 1){
+				connection_open = false;
+			}
+		}
+		
+	}
+
+	printf("Cerrando conexión...\n");
+	// Cerrar conexión
 	close(client_fd);
+
 	return 0;
 }
