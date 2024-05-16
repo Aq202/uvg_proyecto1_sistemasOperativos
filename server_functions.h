@@ -5,6 +5,12 @@
 #include "chat.pb-c.h"
 #include <stdlib.h>
 
+
+struct Buffer {
+    uint8_t *buffer;
+    size_t buffer_size;
+};
+
 struct User {
     int connection_fd;
     char* name;
@@ -81,13 +87,67 @@ void print_usernames(){
     }
 }
 
-Chat__Response get_response_object(int operation, int status_code, char *message){
+struct Buffer get_simple_response(int operation, int status_code, char *message){
     Chat__Response response = CHAT__RESPONSE__INIT;
     response.operation = operation;
     response.status_code = status_code;
     response.message = message;
 
-    return response;
+    size_t size = chat__response__get_packed_size(&response);
+	uint8_t *buffer = (uint8_t *)malloc(size);
+		
+	chat__response__pack(&response, buffer);
+
+    struct Buffer response_buf = {
+        buffer,
+        size
+    };
+    return response_buf;
+
+}
+
+/**
+ * Función para remover un usuario del servidor.
+ * @param connection_fd int. fd de la conexión por sockets.
+ * @param strict bool. Si su valor es true, devuelve un error si el usuario no fue encontrado para luego ser removido.
+ * @return String. Error al remover usuario. NUll si no hay error.
+*/
+char* remove_user(int connection_fd, bool strict){
+
+    if(first_user == NULL && strict){
+        return "El usuario no está registrado";
+    }
+
+    struct User* user = first_user;
+    struct User *user_to_remove = NULL;
+    while(user != NULL){
+
+        if(user->connection_fd == connection_fd){
+
+            // Si el usuario actual es el objetivo
+             user_to_remove = user;
+            
+        }else if(user->next_user != NULL && user->next_user->connection_fd == connection_fd){
+            // Si el usuario siguiente es el objetivo
+            user_to_remove = user->next_user;
+            user->next_user = user_to_remove->next_user; // Enlazar al siguiente usuario en la lista
+        }
+
+        if(user_to_remove != NULL){
+            
+            //ELiminar punteros de inicio y fin de la lista si es un usuario extremo
+            if(user_to_remove == first_user){
+                first_user = user_to_remove->next_user; 
+            }else if (user_to_remove == last_user){
+                last_user = NULL;
+            }
+            free(user_to_remove);
+            return NULL;
+        }
+        user = user->next_user;
+    }
+
+    return strict ? "El usuario no esta registrado.": NULL;
 }
 
 #endif

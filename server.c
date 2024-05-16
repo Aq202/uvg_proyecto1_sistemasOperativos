@@ -57,6 +57,9 @@ void *thread_listening_client(void *param) {
 			printf("Request type: %d\n", request->operation);
 
 			if(request->operation == CHAT__OPERATION__REGISTER_USER){
+
+				// Registrar usuario
+
 				char* result = register_user(socket_id, request->register_user->username, ip);
 				char* message = "Usuario registrado exitosamente!";
 				int status = 200;
@@ -67,21 +70,37 @@ void *thread_listening_client(void *param) {
 				}
 
 				// Enviar respuesta
-				Chat__Response res = get_response_object(CHAT__OPERATION__REGISTER_USER, status, message);
-				size_t size = chat__response__get_packed_size(&res);
-				uint8_t *buffer = (uint8_t *)malloc(size);
-		
-				chat__response__pack(&res, buffer);
-				send(socket_id, buffer, size, 0);
-				free(buffer);
+				struct Buffer res_buff = get_simple_response(CHAT__OPERATION__REGISTER_USER, status, message);
+				
+				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
+				free(res_buff.buffer);
 				printf("Respuesta '%s' enviada.\n", message);
+
+			} else if (request->operation == CHAT__OPERATION__UNREGISTER_USER){
+
+				// Desloguear usuario. Conexión permanece abierta.
+				char* result = remove_user(socket_id, true);
+				char* message = "Logout realizado exitosamente!";
+				int status = CHAT__STATUS_CODE__OK;
+				if(result != NULL){
+					// Hay error, enviar mensaje y status de error
+					message = result;
+					status = CHAT__STATUS_CODE__BAD_REQUEST;
+				}
+
+				// Enviar respuesta
+				struct Buffer res_buff = get_simple_response(CHAT__OPERATION__REGISTER_USER, status, message);
+				
+				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
+				free(res_buff.buffer);
 			}
 		}
 
-
-	
-
     }
+
+	// Eliminar al usuario del registro
+	remove_user(socket_id, false);
+	print_usernames();
 
 	printf("Conexión %d ha sido cerrada.\n", socket_id);
 

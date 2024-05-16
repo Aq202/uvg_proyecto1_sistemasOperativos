@@ -46,21 +46,30 @@ void *thread_listening_server(void *param) {
 
 		if(response != NULL){
 
+			if(response->message != NULL){
+				printf("Respuesta del servidor: (%s) %s\n",response->status_code == CHAT__STATUS_CODE__OK ? "ok" : "error", response->message);
+			}
+
 			if(response->operation == CHAT__OPERATION__REGISTER_USER){
 
+				// Respuesta del servidor para registro de usuario
 				
 				if(response->status_code != CHAT__STATUS_CODE__OK){
 					// No se registró el nombre de usuario, resetear
 					username = NULL;
 					provitional_username = true;
-					printf("Respuesta del servidor: (error) %s\n", response->message);
 				} else {
 					provitional_username = false; // username aceptado
-					printf("Respuesta del servidor: (ok) %s\n", response->message);
-
 				}
 
 				lock_menu = false; // Liberar bloqueo de menu
+			
+			}else if(response->operation == CHAT__OPERATION__UNREGISTER_USER){
+
+				// Respuesta del servidor para logout de usuario
+				if(response->status_code == CHAT__STATUS_CODE__OK){
+					username = NULL;
+				}
 			}
 			
 		}else{
@@ -160,6 +169,8 @@ int main(int argc, char const* argv[])
 
 			int option = read_number("##### Menú de opciones #####\n1. Registrar nombre de usuario\n2. Salir\nElegir una opción: ");
 			
+			if(username != NULL || !provitional_username) continue; // Evitar cambios durante input
+
 			if(option == 1){
 
 				username = read_string("Ingresar username: ", 100);
@@ -174,9 +185,19 @@ int main(int argc, char const* argv[])
 			}
 			
 		}else{
-			int option = read_number("##### Menú de opciones #####\n1. Salir\nElegir una opción: ");
-			
+			int option = read_number("##### Menú de opciones #####\n1.Logout de usuario\n2. Salir\nElegir una opción: ");
+
+			if(username == NULL || provitional_username) continue; // Evitar cambios durante input
+
 			if(option == 1){
+
+				// Logout de usuario
+				struct Buffer request = get_unregister_user_request(username);
+				send(client_fd, request.buffer, request.buffer_size, 0);
+				free(request.buffer);
+				printf("Solicitud de logout enviada!\n");
+				lock_menu = true;
+			}else if(option == 2){
 				connection_open = false;
 			}
 		}
