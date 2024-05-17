@@ -189,6 +189,7 @@ int main(int argc, char const* argv[])
 			if(option == 1){
 
 				username = read_string("Ingresar username: ", 100);
+				provitional_username = true;
 
 				struct Buffer request = get_register_user_request(username);
 				send(client_fd, request.buffer, request.buffer_size, 0);

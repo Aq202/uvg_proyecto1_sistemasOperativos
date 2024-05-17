@@ -89,7 +89,7 @@ void *thread_listening_client(void *param) {
 				}
 
 				// Enviar respuesta
-				struct Buffer res_buff = get_simple_response(CHAT__OPERATION__REGISTER_USER, status, message);
+				struct Buffer res_buff = get_simple_response(CHAT__OPERATION__UNREGISTER_USER, status, message);
 				
 				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
 				free(res_buff.buffer);
