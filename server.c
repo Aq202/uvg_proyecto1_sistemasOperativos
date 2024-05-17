@@ -40,6 +40,17 @@ void *thread_listening_client(void *param) {
 			free(buffer);
             break;
         }
+
+		// Buscar objeto de usuario
+		struct User *current_user = get_user(NULL, NULL, &socket_id);
+		if(current_user != NULL){
+
+			// Actualizar última interacción e intentar actualizar estado a online
+			update_user_last_interaction(current_user);
+			auto_update_online_user_status(current_user);
+		}
+		
+
 		// Redimensionar buffer a tamaño de mensaje leído
 		buffer = (uint8_t *)realloc(buffer, bytes_read);
 

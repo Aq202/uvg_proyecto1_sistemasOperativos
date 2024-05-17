@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include "chat.pb-c.h"
 #include <stdlib.h>
+#include <time.h>
+#include "consts.h"
 
 
 struct Buffer {
@@ -17,6 +19,8 @@ struct User {
     char* ip;
     int status;
     struct User* next_user;
+    time_t last_interaction_time;
+    bool status_auto_updated;
 };
 
 struct User* first_user = NULL;
@@ -25,22 +29,76 @@ int total_users = 0;
 
 /**
  * Función para obtener un usuario registrado en el servidor. 
- * Se busca por name o ip o ambos.
+ * Se busca por name , ip, connection_fd o todos.
  * @param name char*. Nombre del usuario.
  * @param ip char*. ip del usuario.
  * @return struct user. Null si no se encuentra el usuario
 */
-struct User* get_user(char*name, char*ip){
+struct User* get_user(char*name, char*ip, int* connection_fd){
 
     struct User* user = first_user;
     while(user != NULL){
 
-        if((name == NULL || strcmp(user->name, name) == 0) && (ip == NULL || strcmp(user->ip, ip) == 0)){
+        if((name == NULL || strcmp(user->name, name) == 0) 
+        && (ip == NULL || strcmp(user->ip, ip) == 0) 
+        && (connection_fd == NULL || user->connection_fd == *connection_fd)) {
             return user;
         }
         user = user->next_user;
     }
     return NULL;
+}
+
+/**
+ * 
+ * Función para actualizar automaticamente el estado offline del usuario, dependiendo de la ultima interacción.
+ * @param user struct user. Usuario a actualizar.
+*/
+void auto_update_offline_user_status(struct User *user){
+
+    if(user->status != CHAT__USER_STATUS__ONLINE) return;
+
+    // Tiempo actual
+    time_t end_time;
+    time(&end_time);
+
+     if (difftime(end_time, user->last_interaction_time) > DOWN_TIME_IN_SECONDS) {
+        // Se cumplió tiempo de inactividad, colocarlo como offline
+        user->status = CHAT__USER_STATUS__OFFLINE;
+        user->status_auto_updated = true; // EL estado fue actualizado auto
+
+    }
+}
+
+/**
+ * 
+ * Función para actualizar automaticamente el estado offline del usuario, dependiendo de la ultima interacción.
+ * @param user struct user. Usuario a actualizar.
+*/
+void auto_update_online_user_status(struct User *user){
+
+    // Si el status no es offline (el cual fue cambiado autom) retornar
+    if(user->status != CHAT__USER_STATUS__OFFLINE || !user->status_auto_updated) return;
+
+    // Tiempo actual
+    time_t end_time;
+    time(&end_time);
+
+     if (difftime(end_time, user->last_interaction_time) < DOWN_TIME_IN_SECONDS) {
+        // La inactividad es menor al tiempo establecido, cambiar a activo
+        user->status = CHAT__USER_STATUS__ONLINE;
+        user->status_auto_updated = true; // EL estado fue actualizado auto
+
+    }
+}
+
+
+/**
+ * Función para actualizar la última interacción (reemplazando por el time actual) de un usuario.
+ * @param user struct user. Usuario a actualizar.
+*/
+void update_user_last_interaction(struct User *user){
+    time(&user->last_interaction_time);
 }
 
 /**
@@ -53,7 +111,7 @@ struct User* get_user(char*name, char*ip){
 char* register_user(int connection_fd, char* name, char* ip){
 
     // Verificar que el nombre sea único
-    if(get_user(name, NULL) != NULL){
+    if(get_user(name, NULL, NULL) != NULL){
         return "El nombre de usuario seleccionado no esta disponible.";
     }
 
@@ -63,6 +121,10 @@ char* register_user(int connection_fd, char* name, char* ip){
     new_user->ip = ip;
     new_user->status = CHAT__USER_STATUS__ONLINE;
     new_user->next_user = NULL;
+    new_user->status_auto_updated = false;
+    
+    // Colocar la última interacción del usuario
+    update_user_last_interaction(new_user);
 
     if(first_user == NULL){
         // Agregar inicio de lista enlazada
@@ -172,6 +234,9 @@ struct Buffer get_user_list_response(char *username){
     int users_num = 0;
     while(user != NULL && (username == NULL || users_num < 1)){ // Si se incluyó filtro, parar cuando se encuentre el username
 
+        // Tratar de auto actualizar estado offline de cada usuario
+        auto_update_offline_user_status(user);
+
         // Si se filtra por usuario, continuar hasta encontrar al usuario
         if(username != NULL && strcmp(user->name, username) != 0){
             user = user->next_user;
@@ -248,6 +313,7 @@ char* update_user_status(int *connection_fd, char *username, int status, bool st
             
             // Usuario encontrado
             user->status = status;
+            user->status_auto_updated = false; // EL estado no fue actualizado auto
             return NULL; 
         }
         user = user->next_user;
@@ -255,5 +321,7 @@ char* update_user_status(int *connection_fd, char *username, int status, bool st
 
     return strict ? "No se encontró el usuario.": NULL;
 }
+
+
 
 #endif
