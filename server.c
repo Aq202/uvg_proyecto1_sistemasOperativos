@@ -114,6 +114,33 @@ void *thread_listening_client(void *param) {
 				
 				if(all) printf("Lista completa de usuarios enviada!\n");
 				else printf("Información de usuario %s enviada!\n", request->get_users->username); 				
+			
+			}else if (request->operation == CHAT__OPERATION__UPDATE_STATUS){
+
+				char* result; // Error por defecto
+				
+				// Validar status 
+				if(request->update_status == NULL){
+					result = result = "Solicitud incompleta.";
+				} else if (request->update_status->new_status < 0 || request->update_status->new_status > 2){
+					result = result = "El status proporcionado no existe (status validos: 0,1,2).";
+				}else{
+					result = update_user_status(&socket_id, NULL, request->update_status->new_status, true);
+				}
+
+				char* message = "Status del usuario actualizado exitosamente!";
+				int status = CHAT__STATUS_CODE__OK;
+				if(result != NULL){
+					// Hay error, enviar mensaje y status de error
+					message = result;
+					status = CHAT__STATUS_CODE__BAD_REQUEST;
+				}
+
+				// Enviar respuesta
+				struct Buffer res_buff = get_simple_response(CHAT__OPERATION__UPDATE_STATUS, status, message);
+				
+				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
+				free(res_buff.buffer);
 			}
 
 		}

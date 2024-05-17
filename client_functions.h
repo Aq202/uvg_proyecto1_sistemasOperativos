@@ -93,3 +93,28 @@ char* get_user_status(int status){
         return "OFFLINE";
     }
 }
+
+struct Buffer get_update_status_request(int new_status, char* username){
+    Chat__Request request = CHAT__REQUEST__INIT;
+	request.operation = CHAT__OPERATION__UPDATE_STATUS;
+
+    Chat__UpdateStatusRequest update_status_req = CHAT__UPDATE_STATUS_REQUEST__INIT;
+    update_status_req.new_status = new_status;
+    update_status_req.username = username;
+	request.payload_case = CHAT__REQUEST__PAYLOAD_UPDATE_STATUS;
+    request.update_status = &update_status_req;
+
+    size_t buffer_size = chat__request__get_packed_size(&request);
+
+    // Asignar memoria para el buffer
+    uint8_t *buffer = (uint8_t *)malloc(buffer_size);
+
+    // Serializar la estructura de mensaje en el buffer
+    chat__request__pack(&request, buffer);
+
+    struct Buffer request_buf = {
+        buffer,
+        buffer_size
+    };
+    return request_buf;
+}

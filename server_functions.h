@@ -115,8 +115,8 @@ struct Buffer get_simple_response(int operation, int status_code, char *message)
 */
 char* remove_user(int connection_fd, bool strict){
 
-    if(first_user == NULL && strict){
-        return "El usuario no está registrado";
+    if(first_user == NULL){
+        return strict ? "El usuario no esta registrado.": NULL;
     }
 
     struct User* user = first_user;
@@ -153,6 +153,11 @@ char* remove_user(int connection_fd, bool strict){
     return strict ? "El usuario no esta registrado.": NULL;
 }
 
+/**
+ * Función para obtener buffer serializado con la lista de usuarios (o usuario, si se añade filtro).
+ * @param username char*. (opcional) Si se agrega, se añade solo la info del usuario especificado. NUll agrega todos los usuarios.
+ * @return Buffer. String serializado con objeto respuesta y tamaño del buffer.
+*/
 struct Buffer get_user_list_response(char *username){
     Chat__Response response = CHAT__RESPONSE__INIT;
     response.operation = CHAT__OPERATION__GET_USERS;
@@ -220,6 +225,35 @@ struct Buffer get_user_list_response(char *username){
         size
     };
     return response_buf;
+}
+
+/**
+ * Función para cambiar status de un usuario del servidor.
+ * @param connection_fd *int. fd de la conexión por sockets (opcional si se agrega username).
+ * @param username *char. Nombre de usuario (opcional si se agrega connection_fd).
+ * @param strict bool. Si su valor es true, devuelve un error si el usuario no fue encontrado.
+ * @return String. Error al cambiar status de usuario. NUll si no hay error.
+*/
+char* update_user_status(int *connection_fd, char *username, int status, bool strict){
+
+    if(first_user == NULL || (connection_fd == NULL && username == NULL)){
+        return strict ? "No se encontró el usuario.": NULL;
+    }
+
+    struct User* user = first_user;
+    while(user != NULL){
+
+        if((connection_fd != NULL && user->connection_fd == *connection_fd) || 
+            (username != NULL && strcmp(username, user->name) == 0)){
+            
+            // Usuario encontrado
+            user->status = status;
+            return NULL; 
+        }
+        user = user->next_user;
+    }
+
+    return strict ? "No se encontró el usuario.": NULL;
 }
 
 #endif

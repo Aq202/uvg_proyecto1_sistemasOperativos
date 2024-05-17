@@ -94,6 +94,9 @@ void *thread_listening_server(void *param) {
 				}
 
 				lock_menu = false; // Liberar bloqueo de menu
+			}else if(response->operation == CHAT__OPERATION__UPDATE_STATUS){
+				// Respuesta del servidor al actualizar status
+				lock_menu = false;
 			}
 			
 		}else{
@@ -210,7 +213,7 @@ int main(int argc, char const* argv[])
 			}
 			
 		}else{
-			int option = read_number("##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2. Obtener datos de un usuario conectado.\n7.Logout de usuario\n8. Salir\nElegir una opción: ");
+			int option = read_number("##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2. Obtener datos de un usuario conectado.\n3. Actualizar status.\n7.Logout de usuario\n8. Salir\nElegir una opción: ");
 
 			if(username == NULL || provitional_username) continue; // Evitar cambios durante input
 
@@ -233,6 +236,26 @@ int main(int argc, char const* argv[])
 				printf("Solicitud de datos de usuario enviada!\n");
 				lock_menu = true;
 
+			}else if(option == 3){
+
+				// Actualizar status de usuario
+
+				// Obtener nuevo status
+				int new_status = -1;
+				while(new_status == -1){
+
+					new_status = read_number("Seleccionar nuevo status:\n1. ONLINE\n2. BUSY\n3. OFFLINE") - 1;
+					if(new_status < 0 || new_status > 2 ){
+						printf("Por favor, selecciona una de las opciones.\n");
+						new_status = -1;
+					}
+				}
+
+				struct Buffer request = get_update_status_request(new_status, username);
+				send(client_fd, request.buffer, request.buffer_size, 0);
+				free(request.buffer);
+				printf("Solicitud de cambio de status enviada!\n");
+				lock_menu = true;
 
 			}else if(option == 7){
 
