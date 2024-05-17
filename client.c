@@ -70,6 +70,21 @@ void *thread_listening_server(void *param) {
 				if(response->status_code == CHAT__STATUS_CODE__OK){
 					username = NULL;
 				}
+
+				lock_menu = false; // Liberar bloqueo de menu
+
+			}else if(response->operation == CHAT__OPERATION__GET_USERS){
+
+				// Respuesta del servidor con "lista" de usuarios
+				if(response->user_list->type == CHAT__USER_LIST_TYPE__ALL){
+					printf("Lista de usuarios conectados:\n");
+					for(int i = 0; i < response->user_list->n_users; i++){
+						Chat__User *user = response->user_list->users[i];
+						printf("%d. (%s) %s - %s\n", i + 1, user->ip_address, user->username, get_user_status(user->status));
+					}
+				}
+
+				lock_menu = false; // Liberar bloqueo de menu
 			}
 			
 		}else{
@@ -185,11 +200,21 @@ int main(int argc, char const* argv[])
 			}
 			
 		}else{
-			int option = read_number("##### Menú de opciones #####\n1.Logout de usuario\n2. Salir\nElegir una opción: ");
+			int option = read_number("##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2.Logout de usuario\n3. Salir\nElegir una opción: ");
 
 			if(username == NULL || provitional_username) continue; // Evitar cambios durante input
 
-			if(option == 1){
+			if (option == 1){
+
+				// Obtener listado completo de usuarios
+				struct Buffer request = get_user_list_request(NULL);
+				send(client_fd, request.buffer, request.buffer_size, 0);
+				free(request.buffer);
+				printf("Solicitud de listado de usuarios enviada!\n");
+				lock_menu = true;
+
+			
+			}else if(option == 2){
 
 				// Logout de usuario
 				struct Buffer request = get_unregister_user_request(username);
@@ -197,7 +222,7 @@ int main(int argc, char const* argv[])
 				free(request.buffer);
 				printf("Solicitud de logout enviada!\n");
 				lock_menu = true;
-			}else if(option == 2){
+			}else if(option == 1){
 				connection_open = false;
 			}
 		}

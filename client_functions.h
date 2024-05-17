@@ -57,3 +57,39 @@ struct Buffer get_unregister_user_request(char *username){
     return request_buf;
 }
 
+
+struct Buffer get_user_list_request(char *username){
+    Chat__Request request = CHAT__REQUEST__INIT;
+	request.operation = CHAT__OPERATION__GET_USERS;
+
+    if(username != NULL){
+        Chat__UserListRequest user_list_req = CHAT__USER_LIST_REQUEST__INIT;
+        user_list_req.username = username;
+        request.get_users = &user_list_req;
+    }
+	request.payload_case = CHAT__REQUEST__PAYLOAD_GET_USERS;
+    
+    size_t buffer_size = chat__request__get_packed_size(&request);
+
+    // Asignar memoria para el buffer
+    uint8_t *buffer = (uint8_t *)malloc(buffer_size);
+
+    // Serializar la estructura de mensaje en el buffer
+    chat__request__pack(&request, buffer);
+
+    struct Buffer request_buf = {
+        buffer,
+        buffer_size
+    };
+    return request_buf;
+}
+
+char* get_user_status(int status){
+    if(status == 0){
+        return "ONLINE";
+    }else if(status == 1){
+        return "BUSY";
+    }else{
+        return "OFFLINE";
+    }
+}
