@@ -97,16 +97,23 @@ void *thread_listening_client(void *param) {
 			} else if (request->operation == CHAT__OPERATION__GET_USERS){
 
 				// Obtener lista de usuarios
+				struct Buffer res_buff;
+				bool all = true;
 				if(request->get_users == NULL || request->get_users->username == NULL){
 
 					// Obtener lista completa
-					struct Buffer res_buff = get_user_list_response();
+					res_buff = get_user_list_response(NULL);
 				
-					send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
-					free(res_buff.buffer);
-					printf("Lista completa de usuarios enviada!\n");
+				}else{
+					// Enviar info de un usuario
+					res_buff = get_user_list_response(request->get_users->username);
+					all = false;
 				}
+				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
+				free(res_buff.buffer);
 				
+				if(all) printf("Lista completa de usuarios enviada!\n");
+				else printf("Información de usuario %s enviada!\n", request->get_users->username); 				
 			}
 
 		}

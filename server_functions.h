@@ -153,17 +153,25 @@ char* remove_user(int connection_fd, bool strict){
     return strict ? "El usuario no esta registrado.": NULL;
 }
 
-struct Buffer get_user_list_response(){
+struct Buffer get_user_list_response(char *username){
     Chat__Response response = CHAT__RESPONSE__INIT;
     response.operation = CHAT__OPERATION__GET_USERS;
     response.status_code = CHAT__STATUS_CODE__OK;
     response.message = "Lista de usuarios conectados enviada correctamente!";
 
+    int users_to_include = username == NULL ? total_users : 1; // Si se incluye el username, solo se devolverá un usuario
+
     // Generar lista de usuarios a enviar
-    struct Chat__User** users = malloc(total_users * sizeof(struct Chat__User*));
+    struct Chat__User** users = malloc(users_to_include * sizeof(struct Chat__User*));
     struct User* user = first_user;
     int users_num = 0;
-    while(user != NULL){
+    while(user != NULL && (username == NULL || users_num < 1)){ // Si se incluyó filtro, parar cuando se encuentre el username
+
+        // Si se filtra por usuario, continuar hasta encontrar al usuario
+        if(username != NULL && strcmp(user->name, username) != 0){
+            user = user->next_user;
+            continue;
+        }
 
         // Guardar puntero de objeto users (protocolo) en lista
         users[users_num] = malloc(sizeof(Chat__User*));
@@ -180,12 +188,18 @@ struct Buffer get_user_list_response(){
         users_num += 1;
     }
 
-    // Objeto que se envía como parte de la response (size, lista de usuarios(punteros) y tipo (all))
+    // Objeto que se envía como parte de la response (size, lista de usuarios(punteros) y tipo)
     Chat__UserListResponse proto_user_list = CHAT__USER_LIST_RESPONSE__INIT;
     proto_user_list.n_users = (size_t) users_num;
     proto_user_list.users = users;
-    proto_user_list.type = CHAT__USER_LIST_TYPE__ALL;
+    proto_user_list.type = username == NULL ? CHAT__USER_LIST_TYPE__ALL : CHAT__USER_LIST_TYPE__SINGLE; // tipo: lista completa o solo uno
 
+
+    // Si se filtra por username y no se encontró mandar error
+    if(username != NULL && users_num == 0){
+        response.status_code = CHAT__STATUS_CODE__BAD_REQUEST;
+        response.message = "El usuario solicitado no existe.";
+    }
 
     response.result_case = CHAT__RESPONSE__RESULT_USER_LIST;
     response.user_list = &proto_user_list;
