@@ -150,6 +150,17 @@ void print_usernames(){
     }
 }
 
+/**
+ * Función que devuelve al siguiente usuario en la lista. Si no hay siguiente devuelve null.
+ * @param previous_user. struct user*. Puntero al usuario anterior. Si se envía null, se devuelve el primer usuario.
+ * @return struct User*.
+*/
+struct User* get_next_user(struct User *previous_user){
+
+    if(!previous_user) return first_user;
+    return previous_user->next_user;
+}
+
 struct Buffer get_simple_response(int operation, int status_code, char *message){
     Chat__Response response = CHAT__RESPONSE__INIT;
     response.operation = operation;
@@ -322,6 +333,31 @@ char* update_user_status(int *connection_fd, char *username, int status, bool st
     return strict ? "No se encontró el usuario.": NULL;
 }
 
+struct Buffer get_send_message_response(char* sender, char *message, int type){
+    Chat__Response response = CHAT__RESPONSE__INIT;
+    response.operation = CHAT__OPERATION__INCOMING_MESSAGE;
+    response.status_code = CHAT__STATUS_CODE__OK;
+    response.message = "Nuevo mensaje recibido";
 
+    Chat__IncomingMessageResponse message_res = CHAT__INCOMING_MESSAGE_RESPONSE__INIT;
+    message_res.content = message;
+    message_res.sender = sender;
+    message_res.type = type;
+
+    response.incoming_message = &message_res;
+    response.result_case = CHAT__RESPONSE__RESULT_INCOMING_MESSAGE;
+
+    size_t size = chat__response__get_packed_size(&response);
+	uint8_t *buffer = (uint8_t *)malloc(size);
+		
+	chat__response__pack(&response, buffer);
+
+    struct Buffer response_buf = {
+        buffer,
+        size
+    };
+    return response_buf;
+
+}
 
 #endif

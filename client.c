@@ -15,7 +15,7 @@ char *username = NULL;
 bool provitional_username = true;
 bool lock_menu = false;
 bool connection_open = true;
-
+bool stop_message_input = false;
 
 void *thread_listening_server(void *param) {
 
@@ -97,6 +97,23 @@ void *thread_listening_server(void *param) {
 			}else if(response->operation == CHAT__OPERATION__UPDATE_STATUS){
 				// Respuesta del servidor al actualizar status
 				lock_menu = false;
+			}else if (response->operation == CHAT__OPERATION__SEND_MESSAGE){
+
+				// Respuesta del servidor al enviar mensaje (solo lo recibe el emisor)
+				if(response->status_code != CHAT__STATUS_CODE__OK){
+					// Si hay error al enviar mensaje, parar el ciclo para continuar enviando
+					stop_message_input = true;
+				}
+			
+			}else if (response->operation == CHAT__OPERATION__INCOMING_MESSAGE){
+
+				// Mensaje recibido
+				if(response->incoming_message){
+					printf("Mensaje de %s (%s): %s\n",
+					 	response->incoming_message->sender,
+						response->incoming_message->type == CHAT__MESSAGE_TYPE__DIRECT ? "directo" : "todos",
+					    response->incoming_message->content);
+				}
 			}
 			
 		}else{
@@ -213,7 +230,7 @@ int main(int argc, char const* argv[])
 			}
 			
 		}else{
-			int option = read_number("##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2. Obtener datos de un usuario conectado.\n3. Actualizar status.\n7.Logout de usuario\n8. Salir\nElegir una opción: ");
+			int option = read_number("##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2. Obtener datos de un usuario conectado.\n3. Actualizar status.\n4. Enviar mensaje broadcast.\n5. Enviar mensaje directo.\n7.Logout de usuario\n8. Salir\nElegir una opción: ");
 
 			if(username == NULL || provitional_username) continue; // Evitar cambios durante input
 
@@ -256,6 +273,46 @@ int main(int argc, char const* argv[])
 				free(request.buffer);
 				printf("Solicitud de cambio de status enviada!\n");
 				lock_menu = true;
+			}else if (option == 4){
+
+				// Enviar mensaje a todos los usuarios
+
+				// Si ocurre un error con un envío, se para el input
+				while(!stop_message_input){
+					char *message = read_string("Enviar mensaje a todos los usuarios conectados (:q para salir):", 500);
+
+					if(stop_message_input || strcmp(message, ":q") == 0) break;
+
+					struct Buffer request = get_send_message_request(NULL, message);
+					send(client_fd, request.buffer, request.buffer_size, 0);
+					free(request.buffer);
+
+				}
+				stop_message_input = false;
+			}
+			else if (option == 5){
+
+				// Enviar mensaje a todos los usuarios
+				char *recipient = read_string("Nombre del usuario para chatear:", 100);
+				char prompt[600]; // Concatenar mensaje y nombre
+				sprintf(prompt, "Enviar mensaje directo a %s (:q para salir):", recipient);
+
+				// Stop direct message puede indicar que el usuario proporcionado no existe
+				while(!stop_message_input){
+					
+					char *message = read_string(prompt, 500);
+
+					if(stop_message_input || strcmp(message, ":q") == 0) break;
+
+
+					struct Buffer request = get_send_message_request(recipient, message);
+					send(client_fd, request.buffer, request.buffer_size, 0);
+					free(request.buffer);
+					free(message);
+				}
+
+				free(recipient);
+				stop_message_input = false;
 
 			}else if(option == 7){
 

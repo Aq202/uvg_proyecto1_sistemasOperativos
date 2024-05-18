@@ -152,6 +152,51 @@ void *thread_listening_client(void *param) {
 				
 				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
 				free(res_buff.buffer);
+			
+			}else if(request->operation == CHAT__OPERATION__SEND_MESSAGE){
+
+				// Operación para enviar mensaje
+
+				char* message = "Mensaje enviado exitosamente!";
+				int status = CHAT__STATUS_CODE__OK;
+				if(request->send_message == NULL || request->send_message->content == NULL){
+					// Hay error, enviar mensaje y status de error
+					message = "Solicitud incompleta.";
+					status = CHAT__STATUS_CODE__BAD_REQUEST;
+				}else{
+
+					if(request->send_message->recipient && strlen(request->send_message->recipient) > 0){
+						// Mensaje directo
+						struct User *recipient_user = get_user(request->send_message->recipient, NULL, NULL);
+						if(!recipient_user){
+							printf("USUARIO:%s:\n",request->send_message->recipient);
+							message = "El usuario no esta registrado.";
+							status = CHAT__STATUS_CODE__BAD_REQUEST;
+						}else{
+							// ENviar mensaje directo a usuario
+							struct Buffer res_message_buff = get_send_message_response(current_user->name, request->send_message->content, CHAT__MESSAGE_TYPE__DIRECT);
+							send(recipient_user->connection_fd, res_message_buff.buffer, res_message_buff.buffer_size, 0);
+							free(res_message_buff.buffer);
+						}
+					}else{
+						// Mensaje global
+
+						// Iterar usuarios y enviar mensaje
+						struct User *recipient_user = get_next_user(NULL);
+						while(recipient_user){
+							struct Buffer res_message_buff = get_send_message_response(current_user->name, request->send_message->content, CHAT__MESSAGE_TYPE__BROADCAST);
+							send(recipient_user->connection_fd, res_message_buff.buffer, res_message_buff.buffer_size, 0);
+							free(res_message_buff.buffer);
+
+							recipient_user = get_next_user(recipient_user);
+						}
+					}
+				}
+				// Enviar respuesta a emisor
+				struct Buffer res_buff = get_simple_response(CHAT__OPERATION__SEND_MESSAGE, status, message);
+				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
+				free(res_buff.buffer);
+
 			}
 
 		}

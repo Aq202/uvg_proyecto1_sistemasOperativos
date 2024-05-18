@@ -118,3 +118,35 @@ struct Buffer get_update_status_request(int new_status, char* username){
     };
     return request_buf;
 }
+
+/**
+ * Función que genera el buffer para la solicitud de enviar mensaje.
+ * @param recipient_username char*. (opcional) Nombre del usuario destino. Si es null, el mensaje se envía a todos.
+ * @param message char*. Mensaje a enviar.
+*/
+struct Buffer get_send_message_request(char* recipient_username, char* message){
+    Chat__Request request = CHAT__REQUEST__INIT;
+	request.operation = CHAT__OPERATION__SEND_MESSAGE;
+
+    Chat__SendMessageRequest send_message_req = CHAT__SEND_MESSAGE_REQUEST__INIT;
+    send_message_req.content = message;
+    if(recipient_username) send_message_req.recipient = recipient_username;
+
+    request.send_message = &send_message_req;
+    request.payload_case = CHAT__REQUEST__PAYLOAD_SEND_MESSAGE;
+
+
+    size_t buffer_size = chat__request__get_packed_size(&request);
+
+    // Asignar memoria para el buffer
+    uint8_t *buffer = (uint8_t *)malloc(buffer_size);
+
+    // Serializar la estructura de mensaje en el buffer
+    chat__request__pack(&request, buffer);
+
+    struct Buffer request_buf = {
+        buffer,
+        buffer_size
+    };
+    return request_buf;
+}
