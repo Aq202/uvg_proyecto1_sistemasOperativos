@@ -11,8 +11,6 @@
 #include "chat.pb-c.h"
 #include "server_functions.h"
 #include "consts.h"
-#define PORT 8080
-
 
 struct Connection {
 	int fd;
@@ -216,6 +214,12 @@ void *thread_listening_client(void *param) {
 
 int main(int argc, char const* argv[])
 {
+	if (argc != 2) {
+        printf("Agregar parametro <puerto>\n");
+        return -1;
+    }
+
+	int port = atoi(argv[1]); // Obtener puert de parametros
 	int server_fd, new_socket;
 	struct sockaddr_in address;
 	int opt = 1;
@@ -237,7 +241,7 @@ int main(int argc, char const* argv[])
 	}
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(PORT);
+	address.sin_port = htons(port);
 
 	// Forcefully attaching socket to the port 8080
 	if (bind(server_fd, (struct sockaddr*)&address,
@@ -250,6 +254,8 @@ int main(int argc, char const* argv[])
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
+
+	printf("Servidor escuchando en puerto %d\n",port);
 
     pthread_t thread_id;
     while(1){

@@ -9,7 +9,6 @@
 #include <pthread.h> 
 #include "consts.h"
 #include "client_functions.h"
-#define PORT 8080
 
 char *username = NULL;
 bool provitional_username = true;
@@ -169,7 +168,16 @@ char* read_string(char *message, size_t max_size) {
 }
 
 int main(int argc, char const* argv[])
-{
+{	
+
+	if (argc != 3) {
+        printf("Agregar parametros <IP> <puerto>\n");
+        return -1;
+    }
+
+	const char *ip = argv[1];
+	int port = atoi(argv[2]);
+
 	int status, valread, client_fd;
 	struct sockaddr_in serv_addr;
 
@@ -179,11 +187,11 @@ int main(int argc, char const* argv[])
 	}
 
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(PORT);
+	serv_addr.sin_port = htons(port);
 
 	// Convert IPv4 and IPv6 addresses from text to binary
 	// form
-	if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)
+	if (inet_pton(AF_INET, ip, &serv_addr.sin_addr)
 		<= 0) {
 		printf(
 			"\nInvalid address/ Address not supported \n");
