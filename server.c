@@ -21,7 +21,7 @@ void *thread_listening_client(void *param) {
 	struct Connection cn = *((struct Connection *)param);
     int socket_id = cn.fd;
 	char *ip = cn.ip;
-    printf("Id del socket del cliente: %d, ip: %s\n", socket_id, ip);
+    printf("Cliente conectado: %d, ip: %s\n", socket_id, ip);
 
 	uint8_t *buffer;
 
@@ -53,7 +53,7 @@ void *thread_listening_client(void *param) {
 		buffer = (uint8_t *)realloc(buffer, bytes_read);
 
 
-		printf("El mensaje recibido es: %s\n", (char*) buffer);
+		printf("Mensaje recibido de cliente %d %s: %s\n", socket_id, ip, (char*) buffer);
 
 		// Convertir a objeto request
 		Chat__Request *request = chat__request__unpack(NULL, bytes_read, buffer);
@@ -62,8 +62,6 @@ void *thread_listening_client(void *param) {
 		free(buffer);
 
 		if(request != NULL){
-
-			printf("Request type: %d\n", request->operation);
 
 			if(request->operation == CHAT__OPERATION__REGISTER_USER){
 
@@ -83,7 +81,7 @@ void *thread_listening_client(void *param) {
 				
 				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
 				free(res_buff.buffer);
-				printf("Respuesta '%s' enviada.\n", message);
+				printf("Respuesta '%s' enviada a cliente %d %s.\n", message, socket_id, ip);
 
 			} else if (request->operation == CHAT__OPERATION__UNREGISTER_USER){
 
@@ -107,7 +105,6 @@ void *thread_listening_client(void *param) {
 
 				// Obtener lista de usuarios
 				struct Buffer res_buff;
-				bool all = true;
 				if(request->get_users == NULL || request->get_users->username == NULL){
 
 					// Obtener lista completa
@@ -116,13 +113,10 @@ void *thread_listening_client(void *param) {
 				}else{
 					// Enviar info de un usuario
 					res_buff = get_user_list_response(request->get_users->username);
-					all = false;
 				}
 				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
 				free(res_buff.buffer);
-				
-				if(all) printf("Lista completa de usuarios enviada!\n");
-				else printf("Información de usuario %s enviada!\n", request->get_users->username); 				
+							
 			
 			}else if (request->operation == CHAT__OPERATION__UPDATE_STATUS){
 
@@ -167,7 +161,6 @@ void *thread_listening_client(void *param) {
 						// Mensaje directo
 						struct User *recipient_user = get_user(request->send_message->recipient, NULL, NULL);
 						if(!recipient_user){
-							printf("USUARIO:%s:\n",request->send_message->recipient);
 							message = "El usuario no esta registrado.";
 							status = CHAT__STATUS_CODE__BAD_REQUEST;
 						}else{
