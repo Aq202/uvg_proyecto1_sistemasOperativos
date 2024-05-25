@@ -193,33 +193,33 @@ char* remove_user(int connection_fd, bool strict){
     }
 
     struct User* user = first_user;
-    struct User *user_to_remove = NULL;
+    struct User* prev_user = NULL;
     while(user != NULL){
 
         if(user->connection_fd == connection_fd){
 
             // Si el usuario actual es el objetivo
-             user_to_remove = user;
-            
-        }else if(user->next_user != NULL && user->next_user->connection_fd == connection_fd){
-            // Si el usuario siguiente es el objetivo
-            user_to_remove = user->next_user;
-            user->next_user = user_to_remove->next_user; // Enlazar al siguiente usuario en la lista
-        }
-
-        if(user_to_remove != NULL){
             
             total_users -= 1;
 
-            //ELiminar punteros de inicio y fin de la lista si es un usuario extremo
-            if(user_to_remove == first_user){
-                first_user = user_to_remove->next_user; 
-            }else if (user_to_remove == last_user){
-                last_user = NULL;
+            // Enlazar usuario previo con siguiente
+            if(prev_user != NULL){
+                prev_user->next_user = user->next_user;
             }
-            free(user_to_remove);
+
+            //ELiminar punteros de inicio y fin de la lista si es un usuario extremo
+            if(user == first_user){
+                first_user = user->next_user; 
+            }else if (user == last_user){
+                last_user = prev_user;
+            }
+
+            free(user);
             return NULL;
+            
         }
+
+        prev_user = user;
         user = user->next_user;
     }
 
