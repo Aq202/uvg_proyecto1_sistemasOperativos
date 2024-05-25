@@ -12,8 +12,7 @@ enum UserStatus {
 // User represents the essential information about a chat user.
 message User {
     string username = 1;  // Unique identifier for the user.
-    string ip_address = 2;  // IP address of the user, used for server management, not exposed to other clients.
-    UserStatus status = 3;  // Current status of the user, indicating availability.
+    UserStatus status = 2;  // Current status of the user, indicating availability.
 }
 
 // NewUserRequest is used to register a new user on the chat server.
@@ -85,7 +84,6 @@ message Request {
     }
 }
 
-// Consider reduce to just 200, 400 and maybe 500
 enum StatusCode { 
     UNKNOWN_STATUS = 0;              // Default value, should not be used in normal operations
     OK = 200;                        // Request has succeeded

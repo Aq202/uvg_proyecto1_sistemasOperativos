@@ -78,9 +78,6 @@ typedef enum _Chat__Operation {
   CHAT__OPERATION__INCOMING_MESSAGE = 5
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CHAT__OPERATION)
 } Chat__Operation;
-/*
- * Consider reduce to just 200, 400 and maybe 500
- */
 typedef enum _Chat__StatusCode {
   /*
    * Default value, should not be used in normal operations
@@ -114,17 +111,13 @@ struct  Chat__User
    */
   char *username;
   /*
-   * IP address of the user, used for server management, not exposed to other clients.
-   */
-  char *ip_address;
-  /*
    * Current status of the user, indicating availability.
    */
   Chat__UserStatus status;
 };
 #define CHAT__USER__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&chat__user__descriptor) \
-    , (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, CHAT__USER_STATUS__ONLINE }
+    , (char *)protobuf_c_empty_string, CHAT__USER_STATUS__ONLINE }
 
 
 /*

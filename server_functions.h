@@ -260,7 +260,6 @@ struct Buffer get_user_list_response(char *username){
         Chat__User *proto_user = malloc(sizeof(Chat__User));
         chat__user__init(proto_user); // Inicializar el usuario
         proto_user->username = user->name;
-        proto_user->ip_address = user->ip;
         proto_user->status = user->status;
 
         users[users_num] = proto_user;

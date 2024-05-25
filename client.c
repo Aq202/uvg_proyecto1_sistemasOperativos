@@ -36,7 +36,7 @@ void *thread_listening_server(void *param) {
         }
 		// Redimensionar buffer a tamaño de mensaje leído
 		buffer = (uint8_t *)realloc(buffer, bytes_read);
-
+		
 		// Convertir a objeto request
 		Chat__Response *response = chat__response__unpack(NULL, bytes_read, buffer);
 
@@ -73,7 +73,7 @@ void *thread_listening_server(void *param) {
 				lock_menu = false; // Liberar bloqueo de menu
 
 			}else if(response->operation == CHAT__OPERATION__GET_USERS){
-
+				
 				if(response->status_code == CHAT__STATUS_CODE__OK && response->user_list != NULL){
 					
 					if(response->user_list->type == CHAT__USER_LIST_TYPE__ALL){
@@ -82,12 +82,12 @@ void *thread_listening_server(void *param) {
 						printf("Lista de usuarios conectados:\n");
 						for(int i = 0; i < response->user_list->n_users; i++){
 							Chat__User *user = response->user_list->users[i];
-							printf("%d. (%s) %s - %s\n", i + 1, user->ip_address, user->username, get_user_status(user->status));
+							printf("%d. %s - %s\n", i + 1, user->username, get_user_status(user->status));
 						}
 					}else if(response->user_list->n_users > 0){
 						// Datos de un usuario
 						Chat__User *user = response->user_list->users[0];
-						printf("Datos de usuario:\n- username: %s\n- ip: %s\n- status: %s\n", user->username, user->ip_address, get_user_status(user->status));
+						printf("Datos de usuario:\n- username: %s\n- status: %s\n", user->username, get_user_status(user->status));
 					}
 
 				}
