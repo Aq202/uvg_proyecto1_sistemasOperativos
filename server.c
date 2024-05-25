@@ -112,6 +112,7 @@ void *thread_listening_client(void *param) {
 				
 				}else{
 					// Enviar info de un usuario
+					printf("NOMBRE DE USUARIO %s\n",request->get_users->username);
 					res_buff = get_user_list_response(request->get_users->username);
 				}
 				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
