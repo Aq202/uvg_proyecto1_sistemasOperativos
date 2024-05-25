@@ -105,7 +105,7 @@ void *thread_listening_client(void *param) {
 
 				// Obtener lista de usuarios
 				struct Buffer res_buff;
-				if(request->get_users == NULL || request->get_users->username == NULL || request->get_users->username == ""){
+				if(request->get_users == NULL || request->get_users->username == NULL || strcmp(request->get_users->username, "") == 0){
 
 					// Obtener lista completa
 					res_buff = get_user_list_response(NULL);
