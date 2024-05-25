@@ -36,7 +36,7 @@ void *thread_listening_server(void *param) {
         }
 		// Redimensionar buffer a tamaño de mensaje leído
 		buffer = (uint8_t *)realloc(buffer, bytes_read);
-		
+
 		// Convertir a objeto request
 		Chat__Response *response = chat__response__unpack(NULL, bytes_read, buffer);
 
@@ -68,6 +68,7 @@ void *thread_listening_server(void *param) {
 				// Respuesta del servidor para logout de usuario
 				if(response->status_code == CHAT__STATUS_CODE__OK){
 					username = NULL;
+					provitional_username = true;
 				}
 
 				lock_menu = false; // Liberar bloqueo de menu
