@@ -45,9 +45,8 @@ void *thread_listening_server(void *param) {
 
 		if(response != NULL){
 
-			if(response->message != NULL){
-				printf("Respuesta del servidor: (%s) %s\n",response->status_code == CHAT__STATUS_CODE__OK ? "ok" : "error", response->message);
-			}
+			bool show_response = true;
+			bool unlock_menu = false; 
 
 			if(response->operation == CHAT__OPERATION__REGISTER_USER){
 
@@ -61,7 +60,7 @@ void *thread_listening_server(void *param) {
 					provitional_username = false; // username aceptado
 				}
 
-				lock_menu = false; // Liberar bloqueo de menu
+				unlock_menu = true; // Liberar bloqueo de menu
 			
 			}else if(response->operation == CHAT__OPERATION__UNREGISTER_USER){
 
@@ -71,7 +70,7 @@ void *thread_listening_server(void *param) {
 					provitional_username = true;
 				}
 
-				lock_menu = false; // Liberar bloqueo de menu
+				unlock_menu = true; // Liberar bloqueo de menu
 
 			}else if(response->operation == CHAT__OPERATION__GET_USERS){
 				
@@ -91,29 +90,44 @@ void *thread_listening_server(void *param) {
 						printf("Datos de usuario:\n- username: %s\n- status: %s\n", user->username, get_user_status(user->status));
 					}
 
+					show_response = false;
 				}
 
-				lock_menu = false; // Liberar bloqueo de menu
+				unlock_menu = true; // Liberar bloqueo de menu
 			}else if(response->operation == CHAT__OPERATION__UPDATE_STATUS){
 				// Respuesta del servidor al actualizar status
-				lock_menu = false;
+				unlock_menu = true;
 			}else if (response->operation == CHAT__OPERATION__SEND_MESSAGE){
 
 				// Respuesta del servidor al enviar mensaje (solo lo recibe el emisor)
 				if(response->status_code != CHAT__STATUS_CODE__OK){
 					// Si hay error al enviar mensaje, parar el ciclo para continuar enviando
 					stop_message_input = true;
+				}else{
+					show_response = false; // No mostrar respuesta del servidor si hay exito
 				}
 			
 			}else if (response->operation == CHAT__OPERATION__INCOMING_MESSAGE){
 
 				// Mensaje recibido
 				if(response->incoming_message){
-					printf("Mensaje de %s (%s): %s\n",
+					printf(BLUE "Mensaje de %s %s" BLUE ":" RESET " %s\n" ,
 					 	response->incoming_message->sender,
-						response->incoming_message->type == CHAT__MESSAGE_TYPE__DIRECT ? "directo" : "todos",
+						response->incoming_message->type == CHAT__MESSAGE_TYPE__DIRECT ? MAGENTA "(directo)" RESET : GREEN "(todos)" RESET,
 					    response->incoming_message->content);
 				}
+
+				show_response = false; // No mostrar respuesta del servidor
+
+			}
+
+			if(response->message != NULL && show_response){
+				printf("Respuesta del servidor: %s %s" RESET "\n",response->status_code == CHAT__STATUS_CODE__OK ? GREEN "(ok)" : RED "(error)", response->message);
+			}
+
+			if(unlock_menu){
+				// Desbloquear menu hasta mostrar respuesta del servidor.
+				lock_menu = false;
 			}
 			
 		}else{
@@ -194,8 +208,7 @@ int main(int argc, char const* argv[])
 	// form
 	if (inet_pton(AF_INET, ip, &serv_addr.sin_addr)
 		<= 0) {
-		printf(
-			"\nInvalid address/ Address not supported \n");
+		printf(RED "\nDirección inválida.\n" RESET);
 		return -1;
 	}
 
@@ -203,7 +216,7 @@ int main(int argc, char const* argv[])
 		= connect(client_fd, (struct sockaddr*)&serv_addr,
 				sizeof(serv_addr)))
 		< 0) {
-		printf("\nConnection Failed \n");
+		printf(RED "\nConexión fallida.\n" RESET);
 		return -1;
 	}
 
@@ -220,7 +233,7 @@ int main(int argc, char const* argv[])
 		// Mostrar menú de opciones
 		if(username == NULL || provitional_username){
 
-			int option = read_number("##### Menú de opciones #####\n1. Registrar nombre de usuario\n2. Salir\nElegir una opción: ");
+			int option = read_number("\n##### Menú de opciones #####\n1. Registrar nombre de usuario\n2. Salir\nElegir una opción: ");
 			
 			if(username != NULL || !provitional_username) continue; // Evitar cambios durante input
 
@@ -239,7 +252,7 @@ int main(int argc, char const* argv[])
 			}
 			
 		}else{
-			int option = read_number("##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2. Obtener datos de un usuario conectado.\n3. Actualizar status.\n4. Enviar mensaje broadcast.\n5. Enviar mensaje directo.\n7.Logout de usuario\n8. Salir\nElegir una opción: ");
+			int option = read_number("\n##### Menú de opciones #####\n1. Listado de usuarios conectados.\n2. Obtener datos de un usuario conectado.\n3. Actualizar status.\n4. Enviar mensaje broadcast.\n5. Enviar mensaje directo.\n7. Logout de usuario\n8. Salir\nElegir una opción: ");
 
 			if(username == NULL || provitional_username) continue; // Evitar cambios durante input
 
@@ -288,7 +301,7 @@ int main(int argc, char const* argv[])
 
 				// Si ocurre un error con un envío, se para el input
 				while(!stop_message_input){
-					char *message = read_string("Enviar mensaje a todos los usuarios conectados (:q para salir):", 500);
+					char *message = read_string("Enviar mensaje a todos los usuarios conectados " YELLOW "(:q para salir):" RESET, 500);
 
 					if(stop_message_input || strcmp(message, ":q") == 0) break;
 
@@ -304,7 +317,7 @@ int main(int argc, char const* argv[])
 				// Enviar mensaje a todos los usuarios
 				char *recipient = read_string("Nombre del usuario para chatear:", 100);
 				char prompt[600]; // Concatenar mensaje y nombre
-				sprintf(prompt, "Enviar mensaje directo a %s (:q para salir):", recipient);
+				sprintf(prompt,"Enviar mensaje directo a %s " YELLOW " (:q para salir):" RESET, recipient);
 
 				// Stop direct message puede indicar que el usuario proporcionado no existe
 				while(!stop_message_input){

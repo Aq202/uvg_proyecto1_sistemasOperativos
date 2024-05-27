@@ -21,7 +21,7 @@ void *thread_listening_client(void *param) {
 	struct Connection cn = *((struct Connection *)param);
     int socket_id = cn.fd;
 	char *ip = cn.ip;
-    printf("Cliente conectado: %d, ip: %s\n", socket_id, ip);
+    printf(GREEN "Cliente conectado: %d, ip: %s\n" RESET, socket_id, ip);
 
 	uint8_t *buffer;
 
@@ -53,7 +53,7 @@ void *thread_listening_client(void *param) {
 		buffer = (uint8_t *)realloc(buffer, bytes_read);
 
 
-		printf("Mensaje recibido de cliente %d %s: %s\n", socket_id, ip, (char*) buffer);
+		printf(BLUE "Mensaje recibido de cliente %d %s: %s\n" RESET, socket_id, ip, (char*) buffer);
 
 		// Convertir a objeto request
 		Chat__Request *request = chat__request__unpack(NULL, bytes_read, buffer);
@@ -81,7 +81,6 @@ void *thread_listening_client(void *param) {
 				
 				send(socket_id, res_buff.buffer, res_buff.buffer_size, 0);
 				free(res_buff.buffer);
-				printf("Respuesta '%s' enviada a cliente %d %s.\n", message, socket_id, ip);
 
 			} else if (request->operation == CHAT__OPERATION__UNREGISTER_USER){
 
@@ -196,9 +195,8 @@ void *thread_listening_client(void *param) {
 
 	// Eliminar al usuario del registro
 	remove_user(socket_id, false);
-	print_usernames();
 
-	printf("Conexión %d ha sido cerrada.\n", socket_id);
+	printf(RED "Cliente desconectado: %d, ip: %s\n" RESET, socket_id, ip);
 
     // Cerrar el socket y salir del hilo
     close(socket_id);

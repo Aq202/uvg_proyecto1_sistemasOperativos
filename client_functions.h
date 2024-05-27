@@ -86,11 +86,11 @@ struct Buffer get_user_list_request(char *username){
 
 char* get_user_status(int status){
     if(status == 0){
-        return "ONLINE";
+        return GREEN "ONLINE" RESET;
     }else if(status == 1){
-        return "BUSY";
+        return YELLOW "BUSY" RESET;
     }else{
-        return "OFFLINE";
+        return RED "OFFLINE" RESET;
     }
 }
 
