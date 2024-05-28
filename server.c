@@ -174,6 +174,13 @@ void *thread_listening_client(void *param) {
 						// Iterar usuarios y enviar mensaje
 						struct User *recipient_user = get_next_user(NULL);
 						while(recipient_user){
+
+							// Evitar enviar mensaje a emisor
+							if(recipient_user->connection_fd == socket_id){
+								recipient_user = get_next_user(recipient_user);
+								continue;
+							}
+
 							struct Buffer res_message_buff = get_send_message_response(current_user->name, request->send_message->content, CHAT__MESSAGE_TYPE__BROADCAST);
 							send(recipient_user->connection_fd, res_message_buff.buffer, res_message_buff.buffer_size, 0);
 							free(res_message_buff.buffer);
