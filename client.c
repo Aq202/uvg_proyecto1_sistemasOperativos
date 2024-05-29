@@ -132,6 +132,7 @@ void *thread_listening_server(void *param) {
 			
 		}else{
 			printf("Mensaje recibido del servidor no válido.\n");
+			lock_menu = false;
 		}		
 
     }
